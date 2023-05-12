@@ -50,8 +50,7 @@ def check_output(args):
     else:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         out, err = proc.communicate()
-        ret = proc.poll()
-        if ret:
+        if ret := proc.poll():
             raise subprocess.CalledProcessError(ret, args[0], output=out)
 
     if type(out) is bytes:
@@ -79,10 +78,9 @@ def check_head_tag():
     if len(tags) == 1:
         tag = tags[0]
     elif len(tags) > 1:
-        raise Exception('Expected 1 or 0 tags on HEAD, got: {}'.format(tags))
+        raise Exception(f'Expected 1 or 0 tags on HEAD, got: {tags}')
 
-    release_tag_match = RELEASE_TAG_RE.match(tag)
-    if release_tag_match:
+    if release_tag_match := RELEASE_TAG_RE.match(tag):
         new_version_loose = LooseVersion(release_tag_match.group('ver'))
         if new_version_loose > version_loose:
             if DEBUG:
@@ -92,7 +90,7 @@ def check_head_tag():
 
     if found_tag:
         if DEBUG:
-            print('Calculated version: ' + str(version_loose))
+            print(f'Calculated version: {str(version_loose)}')
         return str(version_loose)
 
     return None
@@ -112,8 +110,7 @@ def get_next_minor(prerelease_marker):
     # Use refs (not branches) to get local branches plus remote branches
     refs = check_output(['git', 'show-ref']).splitlines()
     for ref in refs:
-        release_branch_match = RELEASE_BRANCH_RE.match(ref.split()[1])
-        if release_branch_match:
+        if release_branch_match := RELEASE_BRANCH_RE.match(ref.split()[1]):
             # Construct a candidate version from this branch name
             version_new['major'] = int(release_branch_match.group('vermaj'))
             version_new['minor'] = int(release_branch_match.group('vermin')) + 1
@@ -126,9 +123,11 @@ def get_next_minor(prerelease_marker):
             if new_version_loose > version_loose:
                 version_loose = new_version_loose
                 if DEBUG:
-                    print('Found new best version "' + str(version_loose) \
-                            + '" based on branch "' \
-                            + release_branch_match.group('brname') + '"')
+                    print(
+                        f'Found new best version "{str(version_loose)}" based on branch "'
+                        + release_branch_match.group('brname')
+                        + '"'
+                    )
     return str(version_loose)
 
 def get_branch_tags(active_branch_name):
@@ -144,8 +143,7 @@ def get_branch_tags(active_branch_name):
     if active_branch_name == 'master':
         raise Exception('this method is not meant to be called while on "master"')
     tags = ''
-    release_branch_match = RELEASE_BRANCH_RE.match(active_branch_name)
-    if release_branch_match:
+    if release_branch_match := RELEASE_BRANCH_RE.match(active_branch_name):
         # This is a release branch, so look for tags only on this branch
         tag_glob = 'r' + release_branch_match.group('vermaj') + '.' \
                 + release_branch_match.group('vermin') + '.*'
@@ -222,14 +220,13 @@ def main():
             print('Calculating next minor release')
         return get_next_minor(prerelease_marker)
 
-    head_tag_ver = check_head_tag()
-    if head_tag_ver:
+    if head_tag_ver := check_head_tag():
         return head_tag_ver
 
     active_branch_name = check_output(['git', 'rev-parse',
                                        '--abbrev-ref', 'HEAD']).strip()
     if DEBUG:
-        print('Calculating release version for branch: ' + active_branch_name)
+        print(f'Calculating release version for branch: {active_branch_name}')
     if active_branch_name == 'master':
         return get_next_minor(prerelease_marker)
 
@@ -237,12 +234,8 @@ def main():
     tags = process_and_sort_tags(branch_tags)
 
     tag = tags[-1] if len(tags) > 0 else ''
-    # at this point the RE match is redundant, but convenient for accessing
-    # the components of the version string
-    release_tag_match = RELEASE_TAG_RE.match(tag)
-    if release_tag_match:
-        version_new = {}
-        version_new['major'] = int(release_tag_match.group('vermaj'))
+    if release_tag_match := RELEASE_TAG_RE.match(tag):
+        version_new = {'major': int(release_tag_match.group('vermaj'))}
         version_new['minor'] = int(release_tag_match.group('vermin'))
         version_new['patch'] = int(release_tag_match.group('verpatch')) + 1
         version_new['prerelease'] = prerelease_marker
@@ -253,8 +246,11 @@ def main():
         if new_version_loose > version_loose:
             version_loose = new_version_loose
             if DEBUG:
-                print('Found new best version "' + str(version_loose) \
-                        + '" from tag "' + release_tag_match.group('ver') + '"')
+                print(
+                    f'Found new best version "{str(version_loose)}" from tag "'
+                    + release_tag_match.group('ver')
+                    + '"'
+                )
 
     return str(version_loose)
 

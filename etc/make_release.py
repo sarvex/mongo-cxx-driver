@@ -106,7 +106,6 @@ ISSUE_TYPE_ID = {'Backport': '10300',
               is_flag=True,
               help='Produce fewer progress messages')
 @click.argument('git-revision', required=True)
-# pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements
 def release(jira_creds_file,
             github_token_file,
             allow_open_issues,
@@ -133,8 +132,10 @@ def release(jira_creds_file,
     auth_gh = Github(github_token)
 
     if not is_valid_remote(remote):
-        click.echo('The the remote "{}" does not point to the mongodb/mongo-cxx-driver '
-                   'repo...exiting!'.format(remote), err=True)
+        click.echo(
+            f'The the remote "{remote}" does not point to the mongodb/mongo-cxx-driver repo...exiting!',
+            err=True,
+        )
         sys.exit(1)
 
     if dry_run:
@@ -145,7 +146,7 @@ def release(jira_creds_file,
     release_tag, release_version = get_release_tag(git_revision)
 
     if not release_tag:
-        click.echo('No release tag points to {}'.format(git_revision), err=True)
+        click.echo(f'No release tag points to {git_revision}', err=True)
         click.echo('Nothing to do here...exiting!', err=True)
         sys.exit(1)
 
@@ -154,15 +155,15 @@ def release(jira_creds_file,
         sys.exit(1)
 
     if not release_tag_points_to_head(release_tag):
-        click.echo('Tag {} does not point to HEAD...exiting!'.format(release_tag), err=True)
+        click.echo(f'Tag {release_tag} does not point to HEAD...exiting!', err=True)
         sys.exit(1)
 
     is_pre_release = check_pre_release(release_tag)
 
     if not quiet:
-        found_msg = 'Found release tag {}'.format(release_tag)
+        found_msg = f'Found release tag {release_tag}'
         if is_pre_release:
-            found_msg = 'Found pre-release tag {}'.format(release_tag)
+            found_msg = f'Found pre-release tag {release_tag}'
         click.echo(found_msg)
 
     if dist_file:
@@ -184,12 +185,16 @@ def release(jira_creds_file,
     jira_vers_dict = get_jira_project_versions(auth_jira)
 
     if release_version not in jira_vers_dict.keys():
-        click.echo('Version "{}" not found in Jira.  Cannot release!'
-                   .format(release_version), err=True)
+        click.echo(
+            f'Version "{release_version}" not found in Jira.  Cannot release!',
+            err=True,
+        )
         sys.exit(1)
     if jira_vers_dict[release_version].released:
-        click.echo('Version "{}" already released in Jira.  Cannot release again!'
-                   .format(release_version), err=True)
+        click.echo(
+            f'Version "{release_version}" already released in Jira.  Cannot release again!',
+            err=True,
+        )
         sys.exit(1)
 
     issues = get_all_issues_for_version(auth_jira, release_version)
@@ -204,15 +209,17 @@ def release(jira_creds_file,
     gh_release_dict = get_github_releases(gh_repo)
 
     if release_tag in gh_release_dict.keys():
-        click.echo('Version "{}" already released in GitHub.  Cannot release again!'
-                   .format(release_tag), err=True)
+        click.echo(
+            f'Version "{release_tag}" already released in GitHub.  Cannot release again!',
+            err=True,
+        )
         sys.exit(1)
 
     if dry_run:
-        click.echo('DRY RUN!  Not creating release for tag "{}"'.format(release_tag))
+        click.echo(f'DRY RUN!  Not creating release for tag "{release_tag}"')
 
         if output_file:
-            click.echo('Release notes draft is here: {}'.format(output_file))
+            click.echo(f'Release notes draft is here: {output_file}')
 
             with open(output_file, 'w') as output_stream:
                 output_stream.write(release_notes_text)
@@ -239,10 +246,12 @@ def print_banner(git_revision):
     Print a nice looking banner.
     """
 
-    banner = "**************************************************************\n"
-    banner += "*********** C R E A T I N G ***** R E L E A S E **************\n"
+    banner = (
+        "**************************************************************\n"
+        + "*********** C R E A T I N G ***** R E L E A S E **************\n"
+    )
     banner += "**************************************************************\n"
-    banner += "This build is for Git revision {}".format(git_revision)
+    banner += f"This build is for Git revision {git_revision}"
 
     click.echo(banner)
 
@@ -257,11 +266,11 @@ def get_release_tag(git_revision):
 
     repo = Repo('.')
     commit_to_release = repo.commit(git_revision)
-    release_tags = []
-    for tag in repo.tags:
-        if tag.commit == commit_to_release and RELEASE_TAG_RE.match(tag.name):
-            release_tags.append(tag)
-
+    release_tags = [
+        tag
+        for tag in repo.tags
+        if tag.commit == commit_to_release and RELEASE_TAG_RE.match(tag.name)
+    ]
     best_tag = None
     if release_tags:
         version_loose = LooseVersion('0.0.0')
@@ -287,14 +296,15 @@ def working_dir_on_valid_branch(release_version):
     if version_loose.version[2] == 0:
         exp_branch = 'master'
     else:
-        exp_branch = 'releases/v{}.{}'.format(version_loose.version[0], version_loose.version[1])
+        exp_branch = f'releases/v{version_loose.version[0]}.{version_loose.version[1]}'
 
     if repo.active_branch.name == exp_branch:
         return True
 
-    click.echo('Expected branch "{}" for release version "{}", but working '
-               'directory is on branch "{}"...exiting!'
-               .format(exp_branch, release_version, repo.active_branch.name), err=True)
+    click.echo(
+        f'Expected branch "{exp_branch}" for release version "{release_version}", but working directory is on branch "{repo.active_branch.name}"...exiting!',
+        err=True,
+    )
     return False
 
 def release_tag_points_to_head(release_tag):
@@ -349,7 +359,7 @@ def build_c_driver(c_driver_build_ref, quiet):
     """
 
     if not quiet:
-        click.echo(f'Building C Driver (this could take several minutes)')
+        click.echo('Building C Driver (this could take several minutes)')
         click.echo('Pass --with-c-driver to use an existing installation')
 
     env = os.environ.copy()
@@ -357,7 +367,7 @@ def build_c_driver(c_driver_build_ref, quiet):
     run_shell_script('./.evergreen/install_c_driver.sh', env=env)
 
     if not quiet:
-        click.echo('Build of C Driver version "{}" was successful.'.format(c_driver_build_ref))
+        click.echo(f'Build of C Driver version "{c_driver_build_ref}" was successful.')
 
     return './mongoc'
 
@@ -368,15 +378,18 @@ def build_distribution(release_tag, release_version, c_driver_dir, quiet, skip_d
     tarball for a successful build and return None for a failed build.
     """
 
-    dist_file = 'build/mongo-cxx-driver-{}.tar.gz'.format(release_tag)
+    dist_file = f'build/mongo-cxx-driver-{release_tag}.tar.gz'
 
     if not quiet:
-        click.echo('Building C++ distribution tarball: {}'.format(dist_file))
+        click.echo(f'Building C++ distribution tarball: {dist_file}')
 
     if os.path.exists(dist_file):
-        click.echo('Distribution tarball already exists: {}'.format(dist_file))
+        click.echo(f'Distribution tarball already exists: {dist_file}')
         click.echo('Refusing to build distribution tarball.')
-        click.echo('To use the existing tarball, pass: --dist-file {}'.format(dist_file), err=True)
+        click.echo(
+            f'To use the existing tarball, pass: --dist-file {dist_file}',
+            err=True,
+        )
         return None
 
     if os.path.exists('build/CMakeCache.txt'):
@@ -395,7 +408,7 @@ def build_distribution(release_tag, release_version, c_driver_dir, quiet, skip_d
 
     if not quiet:
         click.echo('C++ Driver build was successful.')
-        click.echo('Distribution file: {}'.format(dist_file))
+        click.echo(f'Distribution file: {dist_file}')
 
     if not skip_distcheck:
         click.echo('Building C++ driver from tarball and running tests.')
@@ -418,13 +431,12 @@ def read_jira_oauth_creds(jira_creds_file):
     oauth_dict = {}
     with open(jira_creds_file, 'rb') as creds_stream:
         creds_data = creds_stream.read().decode('ascii')
-        creds_match = creds_re.match(creds_data)
-        if creds_match:
-            oauth_dict['access_token'] = creds_match.group(1)
-            oauth_dict['access_token_secret'] = creds_match.group(2)
-            oauth_dict['consumer_key'] = creds_match.group(3)
+        if creds_match := creds_re.match(creds_data):
+            oauth_dict['access_token'] = creds_match[1]
+            oauth_dict['access_token_secret'] = creds_match[2]
+            oauth_dict['consumer_key'] = creds_match[3]
             # Fix the double-backslash created by the decode() call above
-            oauth_dict['key_cert'] = creds_match.group(4).replace("\\n", "\n")
+            oauth_dict['key_cert'] = creds_match[4].replace("\\n", "\n")
 
     return oauth_dict
 
@@ -444,8 +456,7 @@ def get_all_issues_for_version(auth_jira, release_version):
     Return a list of all issues in the project assigned to the given release.
     """
 
-    jql_query = 'project={} and fixVersion={} ORDER BY issueKey ASC'\
-            .format(str(CXX_PROJ_ID), release_version)
+    jql_query = f'project={str(CXX_PROJ_ID)} and fixVersion={release_version} ORDER BY issueKey ASC'
     return auth_jira.search_issues(jql_query, maxResults=0)
 
 def all_issues_closed(issues):
@@ -454,15 +465,17 @@ def all_issues_closed(issues):
     message(s) and return False if any open issues are found.
     """
 
-    status_set = set(i.fields.status.name for i in issues)
+    status_set = {i.fields.status.name for i in issues}
 
     if status_set.difference({'Closed'}):
-        msg = 'Open tickets found.  Cannot release!'
-        msg += '\nThe following open tickets were found:'
+        msg = (
+            'Open tickets found.  Cannot release!'
+            + '\nThe following open tickets were found:'
+        )
         click.echo(msg, err=True)
         open_filter = lambda x: x.fields.status.name != 'Closed'
         open_issues = [i.key for i in filter(open_filter, issues)]
-        click.echo('{}'.format(", ".join(open_issues)), err=True)
+        click.echo(f'{", ".join(open_issues)}', err=True)
         return False
 
     return True
@@ -473,8 +486,10 @@ def generate_release_notes(issues, release_version):
     announcement.
     """
 
-    release_notes = '<h1>Release Notes - C++ Driver - Version {}</h1>\n'.format(release_version)
-    release_notes += '<h2>Bug</h2>\n'
+    release_notes = (
+        f'<h1>Release Notes - C++ Driver - Version {release_version}</h1>\n'
+        + '<h2>Bug</h2>\n'
+    )
     release_notes += '<ul>\n'
     bug_filter = lambda i: i.fields.issuetype.id == ISSUE_TYPE_ID['Bug']
     release_notes += print_issues(list(filter(bug_filter, issues)))
@@ -501,8 +516,7 @@ def print_issues(issues):
     text = ''
     for issue in issues:
         text += '<li>'
-        text += '[<a href="{}">{}</a>] - {}'\
-                .format(issue.permalink(), issue.key, issue.fields.summary)
+        text += f'[<a href="{issue.permalink()}">{issue.key}</a>] - {issue.fields.summary}'
         text += '</li>\n'
 
     return text
@@ -517,12 +531,10 @@ def read_github_creds(github_token_file):
 
     with open(github_token_file, 'rb') as token_stream:
         token_data = token_stream.read().decode('ascii')
-        token_match = token_re.match(token_data)
-        if token_match:
-            github_token = token_match.group('tok')
+        if token_match := token_re.match(token_data):
+            github_token = token_match['tok']
         else:
-            click.echo('No Github token found in file "{}"'
-                       .format(github_token_file), err=True)
+            click.echo(f'No Github token found in file "{github_token_file}"', err=True)
 
     return github_token
 
@@ -548,11 +560,11 @@ def create_github_release_draft(gh_repo,
     Create a GitHub release in DRAFT state and attach release artifacts.
     """
 
-    release_name = 'MongoDB C++11 Driver {}'.format(release_tag)
+    release_name = f'MongoDB C++11 Driver {release_tag}'
 
     if output_file:
         if not quiet:
-            click.echo('Draft release announcement is here: {}'.format(output_file))
+            click.echo(f'Draft release announcement is here: {output_file}')
 
         with open(output_file, 'w') as output_stream:
             output_stream.write(release_notes_text)
@@ -562,8 +574,9 @@ def create_github_release_draft(gh_repo,
                                             prerelease=is_pre_release)
     gh_release.upload_asset(dist_file)
 
-    click.echo('Github release has been created.  Review and publish here: {}'
-               .format(gh_release.html_url))
+    click.echo(
+        f'Github release has been created.  Review and publish here: {gh_release.html_url}'
+    )
     click.echo('Mark the version as released in Jira.')
     click.echo('Then generate and publish documentation.')
 

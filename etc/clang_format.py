@@ -7,6 +7,7 @@ A script that provides:
 4. Has support for checking which files are to be checked.
 5. Supports validating and updating a set of files to the right coding style.
 """
+
 from __future__ import print_function, absolute_import
 
 import Queue
@@ -53,7 +54,9 @@ CLANG_FORMAT_HTTP_LINUX_CACHE = "https://s3.amazonaws.com/boxes.10gen.com/build/
 CLANG_FORMAT_HTTP_DARWIN_CACHE = "https://s3.amazonaws.com/boxes.10gen.com/build/clang-format-7.0.1-x86_64-apple-darwin.tar.gz"
 
 # Path in the tarball to the clang-format binary
-CLANG_FORMAT_SOURCE_TAR_BASE = string.Template("clang+llvm-$version-$tar_path/bin/" + CLANG_FORMAT_PROGNAME)
+CLANG_FORMAT_SOURCE_TAR_BASE = string.Template(
+    f"clang+llvm-$version-$tar_path/bin/{CLANG_FORMAT_PROGNAME}"
+)
 
 ##############################################################################
 
@@ -99,8 +102,7 @@ def check_output(*popenargs, **kwargs):
         raise ValueError('stdout argument not allowed, it will be overridden.')
     process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
     output, unused_err = process.communicate()
-    retcode = process.poll()
-    if retcode:
+    if retcode := process.poll():
         cmd = kwargs.get("args")
         if cmd is None:
             cmd = popenargs[0]
@@ -138,11 +140,12 @@ def get_clang_format_from_cache_and_extract(url, tarball_ext):
     and extract the tarball
     """
     dest_dir = tempfile.gettempdir()
-    temp_tar_file = os.path.join(dest_dir, "temp.tar" + tarball_ext)
+    temp_tar_file = os.path.join(dest_dir, f"temp.tar{tarball_ext}")
 
     # Download from file
-    print("Downloading clang-format %s from %s, saving to %s" % (CLANG_FORMAT_VERSION,
-            url, temp_tar_file))
+    print(
+        f"Downloading clang-format {CLANG_FORMAT_VERSION} from {url}, saving to {temp_tar_file}"
+    )
 
     # Retry download up to 5 times.
     num_tries = 5
@@ -192,7 +195,7 @@ class ClangFormat(object):
             if os.path.isfile(path):
                 self.path = path
             else:
-                print("WARNING: Could not find clang-format %s" % (path))
+                print(f"WARNING: Could not find clang-format {path}")
 
         # Check the environment variable
         if "MONGO_CLANG_FORMAT" in os.environ:
@@ -206,10 +209,10 @@ class ClangFormat(object):
             # Check for various versions staring with binaries with version specific suffixes in the
             # user's path
             programs = [
-                    CLANG_FORMAT_PROGNAME + "-" + CLANG_FORMAT_VERSION,
-                    CLANG_FORMAT_PROGNAME + "-" + CLANG_FORMAT_SHORT_VERSION,
-                    CLANG_FORMAT_PROGNAME,
-                    ]
+                f"{CLANG_FORMAT_PROGNAME}-{CLANG_FORMAT_VERSION}",
+                f"{CLANG_FORMAT_PROGNAME}-{CLANG_FORMAT_SHORT_VERSION}",
+                CLANG_FORMAT_PROGNAME,
+            ]
 
             if sys.platform == "win32":
                 for i in range(len(programs)):
@@ -243,7 +246,10 @@ class ClangFormat(object):
             if not os.path.isdir(cache_dir):
                 os.makedirs(cache_dir)
 
-            self.path = os.path.join(cache_dir, CLANG_FORMAT_PROGNAME + "-" + CLANG_FORMAT_VERSION + clang_format_progname_ext)
+            self.path = os.path.join(
+                cache_dir,
+                f"{CLANG_FORMAT_PROGNAME}-{CLANG_FORMAT_VERSION}{clang_format_progname_ext}",
+            )
 
             # Download a new version if the cache is empty or stale
             if not os.path.isfile(self.path) or not self._validate_version():
@@ -297,9 +303,8 @@ class ClangFormat(object):
 
                 # Take a lock to ensure diffs do not get mixed when printed to the screen
                 with self.print_lock:
-                    print("ERROR: Found diff for " + file_name)
-                    print("To fix formatting errors, run %s --style=file -i %s" %
-                            (self.path, file_name))
+                    print(f"ERROR: Found diff for {file_name}")
+                    print(f"To fix formatting errors, run {self.path} --style=file -i {file_name}")
                     for line in result:
                         print(line.rstrip())
 
@@ -324,7 +329,7 @@ class ClangFormat(object):
         # Version 3.8 generates files like foo.cpp~RF83372177.TMP when it formats foo.cpp
         # on Windows, we must clean these up
         if sys.platform == "win32":
-            glob_pattern = file_name + "*.TMP"
+            glob_pattern = f"{file_name}*.TMP"
             for fglob in glob.glob(glob_pattern):
                 os.unlink(fglob)
 
@@ -445,9 +450,7 @@ class Repo(object):
     def _get_local_dir(self, path):
         """Get a directory path relative to the git root directory
         """
-        if os.path.isabs(path):
-            return os.path.relpath(path, self.root)
-        return path
+        return os.path.relpath(path, self.root) if os.path.isabs(path) else path
 
     def get_candidates(self, candidates):
         """Get the set of candidate files to check by querying the repository
@@ -483,10 +486,13 @@ class Repo(object):
         gito = self._callgito(cmd)
 
         # This limits only to files we want to format
-        file_list = [line.rstrip()
-                for line in gito.splitlines() if
-                    (line.startswith("src/") and not "/third_party/" in line) or
-                    line.startswith("examples/")]
+        file_list = [
+            line.rstrip()
+            for line in gito.splitlines()
+            if line.startswith("src/")
+            and "/third_party/" not in line
+            or line.startswith("examples/")
+        ]
 
         files_match = re.compile('\\.(h|hh|hpp|cpp)$')
 
@@ -616,9 +622,11 @@ def get_files_to_check_working_tree():
     """
     repos = get_repos()
 
-    valid_files = list(itertools.chain.from_iterable([r.get_working_tree_candidates() for r in repos]))
-
-    return valid_files
+    return list(
+        itertools.chain.from_iterable(
+            [r.get_working_tree_candidates() for r in repos]
+        )
+    )
 
 def get_files_to_check():
     """Get a list of files that need to be checked
@@ -626,9 +634,9 @@ def get_files_to_check():
     """
     repos = get_repos()
 
-    valid_files = list(itertools.chain.from_iterable([r.get_candidates(None) for r in repos]))
-
-    return valid_files
+    return list(
+        itertools.chain.from_iterable([r.get_candidates(None) for r in repos])
+    )
 
 def get_files_to_check_from_patch(patches):
     """Take a patch file generated by git diff, and scan the patch for a list of files to check.
@@ -643,13 +651,15 @@ def get_files_to_check_from_patch(patches):
         with open(patch, "rb") as infile:
             lines += infile.readlines()
 
-    candidates = [check.match(line).group(1) for line in lines if check.match(line)]
+    candidates = [check.match(line)[1] for line in lines if check.match(line)]
 
     repos = get_repos()
 
-    valid_files = list(itertools.chain.from_iterable([r.get_candidates(candidates) for r in repos]))
-
-    return valid_files
+    return list(
+        itertools.chain.from_iterable(
+            [r.get_candidates(candidates) for r in repos]
+        )
+    )
 
 def _get_build_dir():
     """Get the location of the scons' build directory in case we need to download clang-format
@@ -670,10 +680,7 @@ def _lint_files(clang_format, files):
 def lint_patch(clang_format, infile):
     """Lint patch command entry point
     """
-    files = get_files_to_check_from_patch(infile)
-
-    # Patch may have files that we do not want to check which is fine
-    if files:
+    if files := get_files_to_check_from_patch(infile):
         _lint_files(clang_format, files)
 
 def lint(clang_format):
@@ -727,12 +734,14 @@ def reformat_branch(clang_format, commit_prior_to_reformat, commit_after_reforma
 
     # Validate that user passes valid commits
     if not repo.is_commit(commit_prior_to_reformat):
-        raise ValueError("Commit Prior to Reformat '%s' is not a valid commit in this repo" %
-                commit_prior_to_reformat)
+        raise ValueError(
+            f"Commit Prior to Reformat '{commit_prior_to_reformat}' is not a valid commit in this repo"
+        )
 
     if not repo.is_commit(commit_after_reformat):
-        raise ValueError("Commit After Reformat '%s' is not a valid commit in this repo" %
-                commit_after_reformat)
+        raise ValueError(
+            f"Commit After Reformat '{commit_after_reformat}' is not a valid commit in this repo"
+        )
 
     if not repo.is_ancestor(commit_prior_to_reformat, commit_after_reformat):
         raise ValueError(("Commit Prior to Reformat '%s' is not a valid ancestor of Commit After" +
@@ -748,23 +757,35 @@ def reformat_branch(clang_format, commit_prior_to_reformat, commit_after_reforma
 
     merge_base = repo.get_merge_base(commit_prior_to_reformat)
 
-    if not merge_base == commit_prior_to_reformat:
-        raise ValueError("Please rebase to '%s' and resolve all conflicts before running this script" % (commit_prior_to_reformat))
+    if merge_base != commit_prior_to_reformat:
+        raise ValueError(
+            f"Please rebase to '{commit_prior_to_reformat}' and resolve all conflicts before running this script"
+        )
 
     # We assume the target branch is master, it could be a different branch if needed for testing
     merge_base = repo.get_merge_base("master")
 
-    if not merge_base == commit_prior_to_reformat:
+    if merge_base != commit_prior_to_reformat:
         raise ValueError("This branch appears to already have advanced too far through the merge process")
 
     # Everything looks good so lets start going through all the commits
     branch_name = repo.get_branch_name()
-    new_branch = "%s-reformatted" % branch_name
+    new_branch = f"{branch_name}-reformatted"
 
     if repo.does_branch_exist(new_branch):
-        raise ValueError("The branch '%s' already exists. Please delete the branch '%s', or rename the current branch." % (new_branch, new_branch))
+        raise ValueError(
+            f"The branch '{new_branch}' already exists. Please delete the branch '{new_branch}', or rename the current branch."
+        )
 
-    commits = get_list_from_lines(repo.log(["--reverse", "--pretty=format:%H", "%s..HEAD" % commit_prior_to_reformat]))
+    commits = get_list_from_lines(
+        repo.log(
+            [
+                "--reverse",
+                "--pretty=format:%H",
+                f"{commit_prior_to_reformat}..HEAD",
+            ]
+        )
+    )
 
     previous_commit_base = commit_after_reformat
 
@@ -784,20 +805,22 @@ def reformat_branch(clang_format, commit_prior_to_reformat, commit_after_reforma
 
             # Format each file needed if it was not deleted
             if not os.path.exists(commit_file):
-                print("Skipping file '%s' since it has been deleted in commit '%s'" % (
-                        commit_file, commit_hash))
+                print(
+                    f"Skipping file '{commit_file}' since it has been deleted in commit '{commit_hash}'"
+                )
                 deleted_files.append(commit_file)
                 continue
 
             if files_match.search(commit_file):
                 clang_format.format(commit_file)
             else:
-                print("Skipping file '%s' since it is not a file clang_format should format" %
-                        commit_file)
+                print(
+                    f"Skipping file '{commit_file}' since it is not a file clang_format should format"
+                )
 
         # Check if anything needed reformatting, and if so amend the commit
         if not repo.is_working_tree_dirty():
-            print ("Commit %s needed no reformatting" % commit_hash)
+            print(f"Commit {commit_hash} needed no reformatting")
         else:
             repo.commit(["--all", "--amend", "--no-edit"])
 
@@ -809,8 +832,11 @@ def reformat_branch(clang_format, commit_prior_to_reformat, commit_after_reforma
         repo.checkout(["--quiet", previous_commit_base])
 
         # Copy each file from the reformatted commit on top of the post reformat
-        diff_files = get_list_from_lines(repo.diff(["%s~..%s" % (previous_commit, previous_commit),
-            "--name-only"]))
+        diff_files = get_list_from_lines(
+            repo.diff(
+                [f"{previous_commit}~..{previous_commit}", "--name-only"]
+            )
+        )
 
         for diff_file in diff_files:
             # If the file was deleted in the commit we are reformatting, we need to delete it again
@@ -819,7 +845,7 @@ def reformat_branch(clang_format, commit_prior_to_reformat, commit_after_reforma
                 continue
 
             # The file has been added or modified, continue as normal
-            file_contents = repo.show(["%s:%s" % (previous_commit, diff_file)])
+            file_contents = repo.show([f"{previous_commit}:{diff_file}"])
 
             root_dir = os.path.dirname(diff_file)
             if root_dir and not os.path.exists(root_dir):
@@ -831,7 +857,7 @@ def reformat_branch(clang_format, commit_prior_to_reformat, commit_after_reforma
             repo.add([diff_file])
 
         # Create a new commit onto clang-formatted branch
-        repo.commit(["--reuse-message=%s" % previous_commit])
+        repo.commit([f"--reuse-message={previous_commit}"])
 
         previous_commit_base = repo.rev_parse(["HEAD"])
 
